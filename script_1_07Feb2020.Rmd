@@ -1,0 +1,119 @@
+---
+title: "Fusarium insilico"
+author: "Emily Giroux"
+date: "2/7/2020"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=1in
+urlcolor: blue
+header-includes: \usepackage{xcolor}
+---
+
+```{r, global_options, eval=TRUE, echo=FALSE, cache=TRUE}
+#Set the global options for knitr
+library("knitr")
+opts_chunk$set(tidy.opts = list(width.cutoff = 80), tidy = TRUE, fig.align = 'center',
+               cache = FALSE, collapse = TRUE, echo = FALSE, eval = FALSE, include = FALSE,
+               message = FALSE, quietly = TRUE, results = 'hide', warn.conflicts = FALSE, 
+               warning = FALSE)
+```
+
+```{r, installation1, eval=TRUE, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#Installing required packages
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+
+if(!require(devtools)) install.packages("devtools")
+
+if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()
+
+library("BiocManager")
+.cran_packages <- c("data.table", "dplyr", "filesstrings", 
+                    "ggplot2", "gridExtra", "kableExtra", 
+                    "knitr", "mgsub", "reshape2", "rprojroot",    
+                    "R.utils", "seqinr", "tidyr")
+.bioc_packages <- c("BiocStyle", "Biostrings", "SRAdb")
+.inst <- .cran_packages %in% installed.packages()
+if(any(!.inst)) {
+   install.packages(.cran_packages[!.inst])
+}
+.inst <- .bioc_packages %in% installed.packages()
+if(any(!.inst)) {
+  BiocManager::install(.bioc_packages[!.inst], ask = FALSE)
+}
+sapply(c(.cran_packages, .bioc_packages), require, character.only = TRUE)
+```
+
+```{r sourcing_my_functions, echo=FALSE, eval=TRUE, include=FALSE, cache=TRUE}
+#Source our custom R scripts:    
+#For this we will use the rprojroot package to set the directory structures. This will help us when finding our files to source functions. We specify ours is an RStudio project. The root object contains a function that will help us locate our package R files regarless of our current working directory.
+library("rprojroot")
+root <- rprojroot::is_rstudio_project
+scriptsPath <- root$make_fix_file(".")("R")
+scripts  <- dir(root$find_file("R", path = root$find_file()))
+scriptsl <- paste(scriptsPath, scripts, sep = "//")
+
+# Record the path to the environment images directory:
+sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory"
+
+lapply(scriptsl, source)
+
+# Make a dedicated analysis directory for this project in my PIRL_working_directory
+analysis <- "fusariumInsilico"
+sharedPathAn <- paste(sharedPath, analysis, sep = "/")
+dir.create(sharedPathAn, showWarnings = TRUE, recursive = FALSE)
+
+# Make a dedicated environment directory for this project in my GitHub_Repos/r_environments directory:
+imageDirPath <- "/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/fusariumInSilico/"
+dir.create("/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/fusariumInSilico", 
+           showWarnings = TRUE, recursive = FALSE)
+
+# Create the name for the environment data file for this project
+baseImage <- "fusariumInSilico_1_07Feb2020.RData"
+
+load(paste(imageDirPath, baseImage, sep = ""))
+save.image(paste(imageDirPath, baseImage, sep = ""))
+```
+
+```{r}
+sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory"
+analysis <- "fusariumInsilico"
+sharedPathAn <- paste(sharedPath, analysis, sep = "/")
+imageDirPath <- "/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/fusariumInSilico/"
+baseImage <- "fusariumInSilico_1_07Feb2020.RData"
+load(paste(imageDirPath, baseImage, sep = ""))
+save.image(paste(imageDirPath, baseImage, sep = ""))
+```
+
+
+Set location of exclusion fasta obtained from ncbi with the search conditions:     
+All pezizomycotina     
+Not Fusarium    
+RefSeq    
+Assemblies    
+Representative
+```{r}
+fusInSilicoRefPath <- paste(referencesPath, "Fusarium_insilicoPipeline", sep = "/")
+fusExclusionFaPath <- paste(fusInSilicoRefPath, "ncbi-genomes-2019-12-17", sep = "/")
+exclGenFnaFiles <- list.files(fusExclusionFaPath, pattern = "*_genomic.fna.gz")
+exclAssemblyID <- sub("^([^_]*_[^_]*).*", "\\1", exclGenFnaFiles)
+
+# write the list of exclusion assembly ids to file:
+library("data.table")
+write.table(exclAssemblyID, file = paste(sharedPathAn, "exclusionAssemblyIDs.txt", sep = "/"),
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+```
+
+```{r}
+# Downloaded files:
+gotten <- list.files(paste(sharedPathAn, "test1", sep = "/"))
+gottenAssemblyIDs <- sub("^([^_]*_[^_]*).*", "\\1", gotten)
+# 148
+
+exclAssemblyID[which(!exclAssemblyID %in% gottenAssemblyIDs)]
+```
+
