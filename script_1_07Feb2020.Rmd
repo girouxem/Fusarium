@@ -78,6 +78,7 @@ load(paste(imageDirPath, baseImage, sep = ""))
 save.image(paste(imageDirPath, baseImage, sep = ""))
 ```
 
+Quick image loading:
 ```{r}
 sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory"
 analysis <- "fusariumInsilico"
