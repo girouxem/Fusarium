@@ -117,4 +117,89 @@ gottenAssemblyIDs <- sub("^([^_]*_[^_]*).*", "\\1", gotten)
 
 exclAssemblyID[which(!exclAssemblyID %in% gottenAssemblyIDs)]
 ```
+Checking out Marco's script, primer_finder.py.    
+Creating a dedicated conda environment, "bio", where I'm insalling all the packages he mentions in his script.    
+    
+Packages available from anaconda.org:    
+    
+BBMap, pigz, pysam, blast, bowtie2, samtools, kmc, jellyfish, psutil, biopython
 
+Step 1:    
+Get metadata of inclusion files in from referencesPath, exclusion set from the other directory:
+```{r}
+library("data.table")
+cds <- basename(list.files(paste(referencesPath, "Fusarium_insilicoPipeline", sep = "/"), 
+                           pattern = "cds", recursive = TRUE, include.dirs = TRUE))
+cdsPath <- list.files(paste(referencesPath, "Fusarium_insilicoPipeline", sep = "/"), 
+                      pattern = "cds", recursive = TRUE, full.names = TRUE)
+metadata1 <- as.data.table(cbind(cds, cdsPath))
+metadata1$type <- "inclusion" 
+
+# Already obtained the fastq for the exlcusion set in the variable "gotten", now get path:
+gottenPath <- list.files(paste(sharedPathAn, "test1", sep = "/"), 
+                         pattern = "cds", recursive = TRUE, full.names = TRUE)
+
+metadata2 <- as.data.table(cbind(gotten, gottenPath))
+metadata2$type <- "exclusion" 
+
+metadata <- rbind(metadata1, metadata2, use.names=FALSE)
+```
+
+Write a separate list for inclusion and exclusion files:
+```{r}
+library("data.table")
+inclusionPathList <- paste(sharedPathAn, "/inclusionFastqPathList.txt", sep = "")
+write.table(metadata1$cdsPath, inclusionPathList, row.names = FALSE, col.names = FALSE, quote = FALSE)
+
+exclusionPathList <- paste(sharedPathAn, "/exclusionFastqPathList.txt", sep = "")
+write.table(metadata2$gottenPath, exclusionPathList, row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+Testing run of kmc:
+```{r}
+prefix <- "kmc_inclusion"
+cmd <- paste("conda activate insilicoPrimer && cd ", sharedPathAn, 
+             " && kmc -k99 -v @", 
+             inclusionPathList, " inclusion ", " . ", 
+             " && conda deactivate", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+
+ print('Running KMC on inclusion group...')
+        Methods.list_to_file(self.inclusion_fasta_list, self.out_folder + '/inclusion_list.txt')
+        Methods.run_kmc(self.out_folder + '/inclusion_list.txt',
+                        self.out_folder + '/inclusion',
+                        self.out_folder + '/kmc/',
+                        self.kmer_size, self.cpu, self.mem,
+                        len(self.inclusion_fasta_list), len(self.inclusion_fasta_list))
+
+
+class KmerObject(object):
+    def __init__(self, ident, desc, seq):
+        # Create seq object with its attributes
+        self.ident = ident
+        self.desc = desc
+        self.seq = seq
+
+
+class Methods(object):
+    accepted_extensions = ['.fa', '.fasta', '.fna',
+                           '.fa.gz', '.fasta.gz', '.fna.gz']
+
+    @staticmethod
+    def get_files(in_folder, accepted_ext):
+        """
+        Get all files in folder.
+        Must supports symbolic links.
+        :param in_folder: path of input folder
+        :return: list of files in folder
+        """
+        file_list = list()
+        # Look for input sequence files recursively
+        for root, directories, filenames in os.walk(in_folder):
+            for filename in filenames:
+                if filename.endswith(tuple(accepted_ext)):  # accept a tuple or string
+                    file_path = os.path.join(root, filename)
+                    file_list.append(file_path)
+        # return [f for f in glob(in_folder + "**/* _result.txt", recursive=False)]
+        return file_list
